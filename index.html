@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:;">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyPlan</title>
+  <style>
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: swap;
+      src: url('./fonts/InterVariable.woff2') format('woff2');
+    }
+  </style>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="titlebar"><span class="titlebar-title">StudyPlan</span></div>
+
+  <nav class="nav">
+    <button class="nav-btn active" data-tab="today">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>Oggi</span>
+    </button>
+    <button class="nav-btn" data-tab="week">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>Settimana</span>
+    </button>
+    <button class="nav-btn" data-tab="stats">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>Riepilogo</span>
+    </button>
+    <div class="nav-spacer"></div>
+    <button class="nav-btn" data-tab="career">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/></svg>
+      <span>Carriera</span>
+    </button>
+    <button class="nav-btn nav-settings" id="btnSettings" title="Impostazioni">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </nav>
+
+  <main class="content">
+    <!-- TODAY -->
+    <section class="tab-panel active" id="tab-today">
+      <div class="today-header">
+        <div class="today-info"><h1 id="todayDate"></h1><p id="todaySubtitle" class="subtitle"></p></div>
+        <button class="btn-primary" id="btnAddEvent">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nuovo impegno
+        </button>
+      </div>
+      <div class="today-grid">
+        <div class="today-timeline-wrap"><div class="timeline-header">Timeline</div><div class="timeline" id="timeline"></div></div>
+        <div class="today-donut-wrap"><div class="donut-header">Progresso</div><canvas id="donutChart" width="200" height="200"></canvas><div id="donutLabel" class="donut-label"></div><div id="todayTaskList" class="task-list-compact"></div></div>
+      </div>
+    </section>
+
+    <!-- WEEK -->
+    <section class="tab-panel" id="tab-week">
+      <div class="week-header">
+        <button class="btn-icon" id="weekPrev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+        <h2 id="weekTitle"></h2>
+        <button class="btn-icon" id="weekNext"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
+        <button class="btn-secondary" id="weekToday">Oggi</button>
+      </div>
+      <div class="week-cal-wrapper">
+        <div class="week-cal-scroll" id="weekCalScroll">
+          <div class="week-cal-gutter" id="weekCalGutter"></div>
+          <div class="week-cal-columns" id="weekCalColumns"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CAREER / PIANO CARRIERA -->
+    <section class="tab-panel" id="tab-career">
+      <!-- Setup screen (shown if no career configured) -->
+      <div id="careerSetup" class="career-setup">
+        <div class="career-setup-inner">
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.5;margin-bottom:16px"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/></svg>
+          <h2>Configura il tuo Piano Carriera</h2>
+          <p class="subtitle" style="margin-bottom:24px">Inserisci i dati del tuo percorso universitario — tutto resta salvato solo sul tuo computer</p>
+          <div class="form-group" style="padding:0;max-width:400px;margin:0 auto">
+            <label>Universita</label>
+            <input type="text" id="careerUniName" placeholder="Es: Politecnico di Torino" class="form-input-career">
+          </div>
+          <div class="form-group" style="padding:0;max-width:400px;margin:12px auto 0">
+            <label>Corso di Laurea</label>
+            <input type="text" id="careerCourseName" placeholder="Es: Ingegneria Informatica" class="form-input-career">
+          </div>
+          <div class="form-group" style="padding:0;max-width:400px;margin:12px auto 0">
+            <label>Tipo di percorso</label>
+            <select id="careerType" class="form-select">
+              <option value="triennale">Triennale (180 CFU)</option>
+              <option value="magistrale">Magistrale (120 CFU)</option>
+              <option value="ciclo-unico-5">Ciclo Unico 5 anni (300 CFU)</option>
+              <option value="ciclo-unico-6">Ciclo Unico 6 anni (360 CFU)</option>
+            </select>
+          </div>
+          <button class="btn-primary" id="careerSetupBtn" style="margin-top:24px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Crea Piano Carriera
+          </button>
+        </div>
+      </div>
+
+      <!-- Career dashboard (shown after setup) -->
+      <div id="careerDashboard" class="career-dashboard" style="display:none">
+        <div class="career-header">
+          <div class="career-header-info">
+            <h1 id="careerTitle">Piano Carriera</h1>
+            <p class="subtitle" id="careerSubtitle"></p>
+          </div>
+          <div class="career-header-stats">
+            <div class="career-stat"><span class="career-stat-val" id="careerCfuDone">0</span><span class="career-stat-lbl">CFU acquisiti</span></div>
+            <div class="career-stat"><span class="career-stat-val" id="careerCfuTotal">0</span><span class="career-stat-lbl">CFU totali</span></div>
+            <div class="career-stat"><span class="career-stat-val" id="careerExamsDone">0</span><span class="career-stat-lbl">Esami superati</span></div>
+            <div class="career-stat"><span class="career-stat-val" id="careerMedia">—</span><span class="career-stat-lbl">Media ponderata</span></div>
+          </div>
+        </div>
+        <div class="career-progress-bar-wrap">
+          <div class="career-progress-bar"><div class="career-progress-fill" id="careerProgressFill"></div></div>
+          <span class="career-progress-pct" id="careerProgressPct">0%</span>
+        </div>
+
+        <!-- Upcoming exams strip -->
+        <div id="careerUpcoming" class="career-upcoming"></div>
+
+        <!-- Actions row -->
+        <div class="career-actions-row">
+          <button class="btn-primary" id="careerAddExam">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Aggiungi esame
+          </button>
+          <div class="career-filter-wrap">
+            <select id="careerStatusFilter" class="form-select form-select-sm">
+              <option value="all">Tutti gli esami</option>
+              <option value="pending">Da sostenere</option>
+              <option value="passed">Superati</option>
+            </select>
+          </div>
+          <button class="btn-secondary btn-sm" id="careerReset" title="Elimina piano carriera">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Reset
+          </button>
+        </div>
+
+        <!-- Exam list -->
+        <div class="career-exam-list" id="careerExamList"></div>
+      </div>
+    </section>
+
+    <!-- STATS -->
+    <section class="tab-panel" id="tab-stats">
+      <h1>Riepilogo</h1>
+      <div class="stats-grid" id="statsGrid"></div>
+      <div class="stats-history"><h3>Attivita recente</h3><div id="statsHistory"></div></div>
+    </section>
+  </main>
+
+  <!-- EVENT MODAL -->
+  <div class="modal-overlay" id="eventModal">
+    <div class="modal">
+      <div class="modal-header"><h2 id="eventModalTitle">Nuovo impegno</h2><button class="btn-icon modal-close" id="eventModalClose"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <form id="eventForm">
+        <div class="form-group"><label>Titolo</label><input type="text" id="eventTitle" required placeholder="Es: Lezione di Analisi"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Data</label><input type="date" id="eventDate" required></div>
+          <div class="form-group"><label>Ora inizio</label><input type="time" id="eventTimeStart" required></div>
+          <div class="form-group"><label>Ora fine</label><input type="time" id="eventTimeEnd" required></div>
+        </div>
+        <div class="form-group"><label>Categoria</label>
+          <div class="category-picker" id="categoryPicker">
+            <button type="button" class="cat-btn active" data-cat="lezione" style="--cat-color:#5B8DEF">Lezione</button>
+            <button type="button" class="cat-btn" data-cat="studio" style="--cat-color:#8B7CF6">Studio</button>
+            <button type="button" class="cat-btn" data-cat="esame" style="--cat-color:#EF6B6B">Esame</button>
+            <button type="button" class="cat-btn" data-cat="progetto" style="--cat-color:#4ADE80">Progetto</button>
+            <button type="button" class="cat-btn" data-cat="personale" style="--cat-color:#FBBF24">Personale</button>
+            <button type="button" class="cat-btn" data-cat="pausa" style="--cat-color:#2DD4BF">Pausa</button>
+          </div>
+        </div>
+        <div class="form-group"><label>Note (opzionale)</label><textarea id="eventNotes" rows="2" placeholder="Appunti, aula, link..."></textarea></div>
+        <!-- Reminders -->
+        <div class="form-group"><label>Promemoria</label>
+          <div class="reminder-row">
+            <label class="toggle"><input type="checkbox" id="eventReminder1On"><span class="toggle-slider"></span></label>
+            <span class="reminder-label">Giorno prima alle</span>
+            <input type="time" id="eventReminder1Time" value="20:00" class="reminder-time-input">
+          </div>
+          <div class="reminder-row">
+            <label class="toggle"><input type="checkbox" id="eventReminder2On"><span class="toggle-slider"></span></label>
+            <span class="reminder-label">Stesso giorno alle</span>
+            <input type="time" id="eventReminder2Time" value="07:00" class="reminder-time-input">
+          </div>
+        </div>
+        <input type="hidden" id="eventId">
+        <div class="modal-actions"><button type="button" class="btn-danger" id="eventDelete" style="display:none">Elimina</button><div class="spacer"></div><button type="button" class="btn-secondary" id="eventCancel">Annulla</button><button type="submit" class="btn-primary">Salva</button></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- CAREER EXAM MODAL (Add/Edit) -->
+  <div class="modal-overlay" id="careerExamModal">
+    <div class="modal">
+      <div class="modal-header"><h2 id="careerExamModalTitle">Aggiungi esame</h2><button class="btn-icon modal-close" id="careerExamModalClose"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <form id="careerExamForm">
+        <div class="form-group"><label>Nome esame</label><input type="text" id="cedName" required placeholder="Es: Analisi Matematica I"></div>
+        <div class="form-row">
+          <div class="form-group"><label>CFU</label><input type="number" id="cedCfu" min="1" max="30" value="6" required></div>
+          <div class="form-group"><label>Anno</label>
+            <select id="cedYear" class="form-select">
+              <option value="1">1° Anno</option><option value="2">2° Anno</option><option value="3">3° Anno</option><option value="4">4° Anno</option><option value="5">5° Anno</option><option value="6">6° Anno</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Semestre</label>
+            <select id="cedSemester" class="form-select">
+              <option value="1">1° Semestre</option><option value="2">2° Semestre</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Stato</label>
+            <select id="cedStatus" class="form-select">
+              <option value="pending">Da sostenere</option>
+              <option value="passed">Superato</option>
+            </select>
+          </div>
+          <div class="form-group" id="cedGradeGroup" style="display:none">
+            <label>Voto</label>
+            <select id="cedGrade" class="form-select">
+              <option value="">—</option>
+              <option value="18">18</option><option value="19">19</option><option value="20">20</option>
+              <option value="21">21</option><option value="22">22</option><option value="23">23</option>
+              <option value="24">24</option><option value="25">25</option><option value="26">26</option>
+              <option value="27">27</option><option value="28">28</option><option value="29">29</option>
+              <option value="30">30</option><option value="31">30 e Lode</option>
+            </select>
+          </div>
+          <div class="form-group" id="cedDateGroup" style="display:none">
+            <label>Data superamento</label>
+            <input type="date" id="cedDate">
+          </div>
+        </div>
+
+        <!-- Exam scheduling -->
+        <div class="form-row" id="cedScheduleRow">
+          <div class="form-group">
+            <label>Data esame</label>
+            <input type="date" id="cedExamDate">
+          </div>
+          <div class="form-group">
+            <label>Preparazione (auto)</label>
+            <input type="range" id="cedProgress" min="0" max="100" value="0" disabled>
+            <span id="cedProgressLabel" class="range-label">0%</span>
+          </div>
+        </div>
+
+        <div class="ced-divider ced-study-section"></div>
+        <div class="ced-section ced-study-section">
+          <div class="ced-section-header">
+            <h3>File allegati</h3>
+            <button type="button" class="btn-secondary btn-sm" id="cedAddPdf">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Aggiungi PDF
+            </button>
+          </div>
+          <div class="ced-pdf-list" id="cedPdfList"><div class="ced-empty">Nessun file allegato</div></div>
+        </div>
+
+        <div class="ced-divider ced-study-section"></div>
+
+        <!-- File-specific page tracking (populated dynamically) -->
+        <div class="ced-section ced-study-section" id="cedFileTrackingSection" style="display:none">
+          <h3>Tracciamento per file</h3>
+          <div class="ced-file-tabs" id="cedFileTabs"></div>
+          <div class="ced-file-tracking-body" id="cedFileTrackingBody"></div>
+        </div>
+
+        <!-- Global page summary chart -->
+        <div class="ced-section ced-study-section" id="cedGlobalSummarySection" style="display:none">
+          <h3>Riepilogo complessivo</h3>
+          <div class="ced-pages-chart" id="cedPagesChart"></div>
+        </div>
+
+        <input type="hidden" id="cedExamId">
+        <div class="modal-actions">
+          <button type="button" class="btn-danger" id="cedDelete" style="display:none">Elimina</button>
+          <div class="spacer"></div>
+          <button type="button" class="btn-secondary" id="cedCancel">Annulla</button>
+          <button type="submit" class="btn-primary">Salva</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal modal-sm">
+      <div class="modal-header"><h2>Impostazioni</h2><button class="btn-icon modal-close" id="settingsModalClose"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <div class="settings-body">
+        <div class="setting-row"><div><div class="setting-label">Notifica mattutina</div><div class="setting-desc">Riepilogo impegni della giornata</div></div><div class="setting-controls"><input type="time" id="settMorningTime" value="07:30"><label class="toggle"><input type="checkbox" id="settMorningOn" checked><span class="toggle-slider"></span></label></div></div>
+        <div class="setting-row"><div><div class="setting-label">Notifica serale</div><div class="setting-desc">Riepilogo completamento giornata</div></div><div class="setting-controls"><input type="time" id="settEveningTime" value="21:00"><label class="toggle"><input type="checkbox" id="settEveningOn" checked><span class="toggle-slider"></span></label></div></div>
+      </div>
+      <div class="modal-actions"><div class="spacer"></div><button class="btn-primary" id="settingsSave">Salva</button></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
