@@ -1,6 +1,8 @@
-const { app, BrowserWindow, ipcMain, Notification, Tray, Menu, nativeImage, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, Notification, Tray, Menu, nativeImage, dialog, shell, clipboard, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const keychainService = require('./services/keychain');
+const biometrics = require('./services/biometrics');
 
 const IS_MAC = process.platform === 'darwin';
 
@@ -41,6 +43,16 @@ ipcMain.handle('load-settings', () => loadJSON(SETTINGS_FILE, { morningNotif: tr
 ipcMain.handle('save-settings', (_, s) => { saveJSON(SETTINGS_FILE, s); return true; });
 ipcMain.handle('show-notification', (_, { title, body }) => { showRobustNotification(title, body); return true; });
 ipcMain.handle('get-platform', () => process.platform);
+ipcMain.handle('get-secure-key', async () => {
+  return await keychainService.getEncryptionKey();
+});
+
+// Biometrics
+ipcMain.handle('bio-check', () => biometrics.isAvailable());
+ipcMain.handle('bio-has-saved', () => biometrics.hasSaved());
+ipcMain.handle('bio-save', (_, pwd) => biometrics.savePassword(pwd));
+ipcMain.handle('bio-login', () => biometrics.retrievePassword());
+ipcMain.handle('bio-clear', () => biometrics.clear());
 
 // ===== IPC: Show main window (called from widgets) =====
 ipcMain.handle('show-main-window', (_, opts) => {
@@ -128,6 +140,15 @@ ipcMain.handle('get-widget-career', () => {
   return loadJSON(CAREER_FILE, null);
 });
 
+// ===== Window Controls (frameless) =====
+ipcMain.on('window-minimize', () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.minimize(); });
+ipcMain.on('window-maximize', () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
+});
+ipcMain.on('window-close', () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.close(); });
+ipcMain.handle('get-is-mac', () => IS_MAC);
+
 // ===== Window =====
 let mainWindow, tray;
 let widgets = []; // Array of widget windows (supports multiple instances)
@@ -135,8 +156,10 @@ let widgets = []; // Array of widget windows (supports multiple instances)
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200, height: 820, minWidth: 1000, minHeight: 650,
-    titleBarStyle: IS_MAC ? 'hiddenInset' : 'default',
-    backgroundColor: '#0f1117',
+    titleBarStyle: IS_MAC ? 'hiddenInset' : 'hidden',
+    ...(IS_MAC ? { trafficLightPosition: { x: 16, y: 18 } } : {}),
+    frame: IS_MAC, // macOS: frame con semafori nativi | Win/Linux: frameless
+    backgroundColor: '#0c0d14',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -151,6 +174,22 @@ function createWindow() {
   mainWindow.loadFile('index.html');
   mainWindow.webContents.on('will-navigate', (event) => { event.preventDefault(); });
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+
+  // PRODUCTION HARDENING — DevTools blocked
+  if (app.isPackaged) {
+    mainWindow.webContents.on('devtools-opened', () => {
+      mainWindow.webContents.closeDevTools();
+    });
+  }
+
+  // BLOCK drag & drop of external files
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.executeJavaScript(`
+      document.addEventListener('dragover', e => e.preventDefault());
+      document.addEventListener('drop', e => e.preventDefault());
+    `);
+  });
+
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     // Handle pending navigation from notification click (e.g., app was closed)
@@ -164,7 +203,18 @@ function createWindow() {
       }, 500);
     }
   });
+
+  // PRIVACY BLUR — oscura quando l'app perde il focus
+  mainWindow.on('blur', () => {
+    mainWindow.webContents.send('app-blur', true);
+  });
+  mainWindow.on('focus', () => {
+    // NON rimuovere lo shield al focus — resta visibile fino al click dell'utente
+  });
+
+  // CLIPBOARD CLEAR + macOS hide on close
   mainWindow.on('close', (e) => {
+    clipboard.clear();
     if (IS_MAC && !isQuitting) {
       e.preventDefault();
       if (mainWindow.isFullScreen()) {
@@ -518,6 +568,9 @@ app.setLoginItemSettings({
 const launchedHidden = process.argv.includes('--hidden');
 
 app.whenReady().then(() => {
+  // PERMISSION LOCKDOWN — deny all hardware/sensor requests
+  session.defaultSession.setPermissionRequestHandler((_, __, callback) => callback(false));
+
   createMenu();
   createTray();
   startNotifScheduler();

@@ -1,15 +1,16 @@
 {
   "name": "studyplan",
-  "version": "1.5.5",
+  "version": "1.6.7",
   "description": "StudyPlan - Calendario e pianificatore esami per studenti",
   "author": "StudyPlan Team",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "node -e \"const p=require('./package.json');const v=p.version.split('.');v[2]=+v[2]+1;p.version=v.join('.');require('fs').writeFileSync('./package.json',JSON.stringify(p,null,2)+'\\n');console.log('v'+p.version)\" && electron-builder --mac --win && npm run install-app && npm run copy-win",
-    "build:mac": "node -e \"const p=require('./package.json');const v=p.version.split('.');v[2]=+v[2]+1;p.version=v.join('.');require('fs').writeFileSync('./package.json',JSON.stringify(p,null,2)+'\\n');console.log('v'+p.version)\" && electron-builder --mac && npm run install-app",
+    "build": "node -e \"const p=require('./package.json');const v=p.version.split('.');v[2]=+v[2]+1;if(+v[2]>=10){v[1]=+v[1]+1;v[2]=0;}p.version=v.join('.');require('fs').writeFileSync('./package.json',JSON.stringify(p,null,2)+'\\n');console.log('v'+p.version)\" && npm run minify && electron-builder --mac --win && git checkout app.js && npm run install-app && npm run copy-win",
+    "minify": "npx terser app.js -o app.min.js --compress drop_console=true,drop_debugger=true,passes=2 --mangle --format comments=false && mv app.min.js app.js",
+    "build:mac": "node -e \"const p=require('./package.json');const v=p.version.split('.');v[2]=+v[2]+1;if(+v[2]>=10){v[1]=+v[1]+1;v[2]=0;}p.version=v.join('.');require('fs').writeFileSync('./package.json',JSON.stringify(p,null,2)+'\\n');console.log('v'+p.version)\" && npm run minify && electron-builder --mac && git checkout app.js && npm run install-app",
     "build:win": "electron-builder --win && npm run copy-win",
-    "install-app": "VER=$(node -p \"require('./package.json').version\") && APP=$(ls -d dist/mac-arm64/*.app 2>/dev/null || ls -d dist/mac/*.app 2>/dev/null) && rm -rf /Applications/StudyPlan.app ~/Desktop/StudyPlan.app && ditto \"$APP\" /Applications/StudyPlan.app && codesign --force --deep --sign - /Applications/StudyPlan.app 2>/dev/null; xattr -cr /Applications/StudyPlan.app; ditto /Applications/StudyPlan.app ~/Desktop/StudyPlan.app && codesign --force --deep --sign - ~/Desktop/StudyPlan.app 2>/dev/null; xattr -cr ~/Desktop/StudyPlan.app; mkdir -p ~/Desktop/\"Le Mie App\"/StudyPlan && rm -f ~/Desktop/\"Le Mie App\"/StudyPlan/*.dmg ~/Desktop/\"Le Mie App\"/StudyPlan/*.exe && for f in dist/StudyPlan-*-arm64.dmg; do cp \"$f\" ~/Desktop/\"Le Mie App\"/StudyPlan/StudyPlan_${VER}_arm64.dmg 2>/dev/null; done; for f in dist/StudyPlan-*.dmg; do echo \"$f\" | grep -q arm64 || cp \"$f\" ~/Desktop/\"Le Mie App\"/StudyPlan/StudyPlan_${VER}_x64.dmg 2>/dev/null; done; for f in dist/\"StudyPlan Setup\"*.exe; do cp \"$f\" ~/Desktop/\"Le Mie App\"/StudyPlan/StudyPlan_${VER}.exe 2>/dev/null; done; /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -f /Applications/StudyPlan.app; rm -rf dist/mac-arm64 dist/mac; killall Dock 2>/dev/null; killall Finder 2>/dev/null; true",
+    "install-app": "VER=$(node -p \"require('./package.json').version\") && APP=$(ls -d dist/mac-arm64/*.app 2>/dev/null || ls -d dist/mac/*.app 2>/dev/null) && rm -rf ~/Desktop/StudyPlan.app && ditto \"$APP\" ~/Desktop/StudyPlan.app && codesign --force --deep --sign - ~/Desktop/StudyPlan.app 2>/dev/null; xattr -cr ~/Desktop/StudyPlan.app; mkdir -p ~/Desktop/\"Le Mie App\"/StudyPlan && rm -f ~/Desktop/\"Le Mie App\"/StudyPlan/*.dmg ~/Desktop/\"Le Mie App\"/StudyPlan/*.exe && for f in dist/StudyPlan-*-arm64.dmg; do cp \"$f\" ~/Desktop/\"Le Mie App\"/StudyPlan/StudyPlan_${VER}_arm64.dmg 2>/dev/null; done; for f in dist/StudyPlan-*.dmg; do echo \"$f\" | grep -q arm64 || cp \"$f\" ~/Desktop/\"Le Mie App\"/StudyPlan/StudyPlan_${VER}_x64.dmg 2>/dev/null; done; for f in dist/\"StudyPlan Setup\"*.exe; do cp \"$f\" ~/Desktop/\"Le Mie App\"/StudyPlan/StudyPlan_${VER}.exe 2>/dev/null; done; rm -rf dist/mac-arm64 dist/mac; killall Dock 2>/dev/null; true",
     "copy-win": "VER=$(node -p \"require('./package.json').version\") && mkdir -p ~/Desktop/\"Le Mie App\"/StudyPlan && rm -f ~/Desktop/\"Le Mie App\"/StudyPlan/*.exe && for f in dist/\"StudyPlan Setup\"*.exe; do cp \"$f\" ~/Desktop/\"Le Mie App\"/StudyPlan/StudyPlan_${VER}.exe 2>/dev/null; done; true"
   },
   "build": {
@@ -75,12 +76,15 @@
       "app.js",
       "styles.css",
       "widget-studyplan.html",
+      "services/**/*",
+      "fonts/**/*",
       "assets/studyplan-icon.png",
       "assets/studyplan-icon.icns",
       "assets/studyplan-icon.ico",
       "assets/studyplan-tray.png",
       "assets/studyplan-tray@2x.png"
     ],
+    "asar": true,
     "directories": {
       "output": "dist"
     },
@@ -88,9 +92,11 @@
   },
   "devDependencies": {
     "electron": "^28.0.0",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^24.9.1",
+    "terser": "^5.46.0"
   },
   "dependencies": {
+    "keytar": "^7.9.0",
     "pdf-lib": "^1.17.1"
   }
 }

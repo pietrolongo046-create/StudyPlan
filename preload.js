@@ -1,5 +1,16 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('api', {
+  // Security
+  getSecureKey: () => ipcRenderer.invoke('get-secure-key'),
+  onBlur: (callback) => ipcRenderer.on('app-blur', (_, val) => callback(val)),
+
+  // Biometrics
+  checkBio: () => ipcRenderer.invoke('bio-check'),
+  hasBioSaved: () => ipcRenderer.invoke('bio-has-saved'),
+  saveBio: (pwd) => ipcRenderer.invoke('bio-save', pwd),
+  loginBio: () => ipcRenderer.invoke('bio-login'),
+  clearBio: () => ipcRenderer.invoke('bio-clear'),
+
   loadEvents: () => ipcRenderer.invoke('load-events'),
   saveEvents: (events) => ipcRenderer.invoke('save-events', events),
   loadExams: () => ipcRenderer.invoke('load-exams'),
@@ -24,4 +35,9 @@ contextBridge.exposeInMainWorld('api', {
   showMainWindow: (opts) => ipcRenderer.invoke('show-main-window', opts),
   onNavigate: (cb) => ipcRenderer.on('navigate', (_, data) => cb(data)),
   onDataChanged: (cb) => ipcRenderer.on('data-changed', () => cb()),
+  // Window controls (frameless)
+  windowMinimize: () => ipcRenderer.send('window-minimize'),
+  windowMaximize: () => ipcRenderer.send('window-maximize'),
+  windowClose: () => ipcRenderer.send('window-close'),
+  isMac: () => ipcRenderer.invoke('get-is-mac'),
 });

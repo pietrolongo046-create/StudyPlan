@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'none';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StudyPlan</title>
   <style>
@@ -17,7 +17,32 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="titlebar"><span class="titlebar-title">StudyPlan</span></div>
+  <!-- PRIVACY SHIELD -->
+  <div id="privacyShield" style="position:fixed;inset:0;z-index:99999;background:rgba(12,13,20,0.6);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);display:flex;align-items:center;justify-content:center;transition:opacity 0.3s;opacity:0;pointer-events:none;cursor:pointer;" onclick="this.style.opacity='0';this.style.pointerEvents='none';">
+    <div style="text-align:center;">
+      <div style="width:80px;height:80px;border-radius:50%;background:rgba(128,112,208,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;animation:pulse 2s infinite;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8070d0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <h2 style="font-size:24px;font-weight:700;color:#fff;margin:0;">Protetto</h2>
+      <p style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:8px;">Clicca per sbloccare</p>
+    </div>
+  </div>
+
+  <div class="titlebar">
+    <span class="titlebar-title">StudyPlan</span>
+    <!-- Window controls for Win/Linux (hidden on macOS via JS) -->
+    <div class="window-controls" id="windowControls" style="display:none;">
+      <button class="wc-btn wc-minimize" id="btnWcMin" title="Minimizza">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <button class="wc-btn wc-maximize" id="btnWcMax" title="Massimizza">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+      </button>
+      <button class="wc-btn wc-close" id="btnWcClose" title="Chiudi">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
 
   <nav class="nav">
     <button class="nav-btn active" data-tab="today">
@@ -309,5 +334,17 @@
 
   <div id="toast" class="toast"></div>
   <script src="app.js"></script>
+  <script>
+    // Privacy Blur
+    if (window.api && window.api.onBlur) {
+      window.api.onBlur(function(val) {
+        var shield = document.getElementById('privacyShield');
+        if (shield) {
+          shield.style.opacity = val ? '1' : '0';
+          shield.style.pointerEvents = val ? 'auto' : 'none';
+        }
+      });
+    }
+  </script>
 </body>
 </html>

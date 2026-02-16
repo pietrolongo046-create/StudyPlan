@@ -22,7 +22,7 @@ body {
   font-size: 14px;
 }
 .widget {
-  background: rgba(15, 17, 23, 0.94);
+  background: rgba(12, 13, 20, 0.94);
   border: 1px solid rgba(255,255,255,0.06);
   border-radius: 18px;
   backdrop-filter: blur(28px);
@@ -69,7 +69,7 @@ body {
 }
 .wh-tab.active::after {
   content: ''; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
-  width: 14px; height: 2px; background: #5B8DEF; border-radius: 1px;
+  width: 14px; height: 2px; background: #8070d0; border-radius: 1px;
 }
 .wh-spacer { flex: 1; }
 .wh-btn {
@@ -79,7 +79,7 @@ body {
   display: flex; align-items: center; justify-content: center;
   transition: all 0.2s;
 }
-.wh-btn:hover { color: #EF6B6B; background: rgba(239,107,107,0.1); transform: scale(1.1); }
+.wh-btn:hover { color: #f87171; background: rgba(248,113,113,0.1); transform: scale(1.1); }
 /* Body */
 .wb {
   flex: 1; display: flex; gap: 12px;
@@ -143,13 +143,13 @@ body {
   transition: all 0.2s; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
-.ev-chk:hover { border-color: #4ADE80; transform: scale(1.1); }
+.ev-chk:hover { border-color: #34d399; transform: scale(1.1); }
 .ev-chk.done {
-  background: #4ADE80; border-color: #4ADE80;
-  box-shadow: 0 0 10px rgba(74,222,128,0.4);
+  background: #34d399; border-color: #34d399;
+  box-shadow: 0 0 10px rgba(52,211,153,0.4);
 }
 .ev-chk.done::after { content: '✓'; font-size: 12px; color: #000; font-weight: 800; }
-.ev-now { border-left: 3px solid #5B8DEF; }
+.ev-now { border-left: 3px solid #8070d0; }
 /* Week view - MUCH BIGGER */
 .wk-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .wk-day { text-align: center; }
@@ -158,7 +158,7 @@ body {
   padding: 4px 0; font-size: 11px;
   border-bottom: 1px solid rgba(255,255,255,0.05);
 }
-.wk-day.today .wk-day-hdr { color: #5B8DEF; }
+.wk-day.today .wk-day-hdr { color: #8070d0; }
 .wk-day-num {
   font-weight: 700; padding: 6px 0; font-size: 16px; color: #999;
 }
@@ -166,11 +166,11 @@ body {
   color: #fff;
 }
 .wk-day.today .wk-day-num span {
-  background: linear-gradient(135deg, #5B8DEF, #4a6fd4);
+  background: linear-gradient(135deg, #8070d0, #6050b8);
   border-radius: 50%; width: 28px; height: 28px;
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 14px;
-  box-shadow: 0 2px 8px rgba(91,141,239,0.4);
+  box-shadow: 0 2px 8px rgba(128,112,208,0.4);
 }
 .wk-evts { padding: 4px 2px; min-height: 50px; }
 .wk-evt {
@@ -198,9 +198,9 @@ body {
   font-weight: 700; padding: 4px 8px; border-radius: 6px;
   font-size: 11px;
 }
-.ex-cd.ok { background: rgba(74,222,128,0.15); color: #4ADE80; }
+.ex-cd.ok { background: rgba(52,211,153,0.15); color: #34d399; }
 .ex-cd.warn { background: rgba(251,191,36,0.15); color: #FBBF24; }
-.ex-cd.urgent { background: rgba(239,107,107,0.15); color: #EF6B6B; animation: pulse-urgent 2s infinite; }
+.ex-cd.urgent { background: rgba(248,113,113,0.15); color: #f87171; animation: pulse-urgent 2s infinite; }
 @keyframes pulse-urgent { 0%,100%{ opacity:1 } 50%{ opacity:0.7 } }
 .ex-bar { display: flex; align-items: center; gap: 8px; }
 .ex-bar-bg { flex: 1; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
@@ -236,7 +236,7 @@ body {
 <script>
 var DS = ['DOM','LUN','MAR','MER','GIO','VEN','SAB'];
 var MO = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
-var CC = { lezione:'#5B8DEF', studio:'#8B7CF6', esame:'#EF6B6B', progetto:'#4ADE80', personale:'#FBBF24', pausa:'#2DD4BF' };
+var CC = { lezione:'#60a5fa', studio:'#8070d0', esame:'#f87171', progetto:'#34d399', personale:'#fbbf24', pausa:'#2dd4bf' };
 var activeTab = 'today';
 
 document.querySelectorAll('.wh-tab').forEach(function(btn) {
@@ -276,14 +276,14 @@ async function renderToday() {
   var pct = total > 0 ? Math.round(done / total * 100) : 0;
   document.getElementById('wStats').innerHTML =
     '<div class="ws-card" onclick="openApp()"><div class="ws-val">' + total + '</div><div class="ws-lbl">Impegni</div></div>' +
-    '<div class="ws-card" onclick="openApp()"><div class="ws-val" style="color:#4ADE80">' + done + '</div><div class="ws-lbl">Fatti</div></div>' +
-    '<div class="ws-card" onclick="openApp()"><div class="ws-val" style="color:' + (pct === 100 ? '#4ADE80' : pct > 50 ? '#FBBF24' : '#EF6B6B') + '">' + pct + '%</div><div class="ws-lbl">Progresso</div></div>';
+    '<div class="ws-card" onclick="openApp()"><div class="ws-val" style="color:#34d399">' + done + '</div><div class="ws-lbl">Fatti</div></div>' +
+    '<div class="ws-card" onclick="openApp()"><div class="ws-val" style="color:' + (pct === 100 ? '#34d399' : pct > 50 ? '#fbbf24' : '#f87171') + '">' + pct + '%</div><div class="ws-lbl">Progresso</div></div>';
   var ct = document.getElementById('wContent');
   if (!events.length) { ct.innerHTML = '<div class="w-empty"><div class="w-empty-icon">🎉</div>Nessun impegno oggi!</div>'; return; }
   ct.innerHTML = events.map(function(ev) {
     var nowClass = !ev.completed && isNowInRange(ev.timeStart, ev.timeEnd) ? ' ev-now' : '';
     return '<div class="ev' + nowClass + '">' +
-      '<div class="ev-dot" style="background:' + (CC[ev.category] || '#5B8DEF') + ';color:' + (CC[ev.category] || '#5B8DEF') + '"></div>' +
+      '<div class="ev-dot" style="background:' + (CC[ev.category] || '#60a5fa') + ';color:' + (CC[ev.category] || '#60a5fa') + '"></div>' +
       '<div class="ev-info" onclick="openApp({navigate:{tab:\'today\',eventId:\'' + ev.id + '\'}})">' +
         '<div class="ev-name ' + (ev.completed ? 'done' : '') + '">' + ev.title + '</div>' +
         '<div class="ev-time">' + ev.timeStart + ' – ' + ev.timeEnd + '</div>' +
@@ -302,8 +302,8 @@ async function renderWeek() {
   var pct = total > 0 ? Math.round(done / total * 100) : 0;
   document.getElementById('wStats').innerHTML =
     '<div class="ws-card" onclick="openApp()"><div class="ws-val">' + total + '</div><div class="ws-lbl">Totali</div></div>' +
-    '<div class="ws-card" onclick="openApp()"><div class="ws-val" style="color:#4ADE80">' + done + '</div><div class="ws-lbl">Fatti</div></div>' +
-    '<div class="ws-card" onclick="openApp()"><div class="ws-val" style="color:' + (pct === 100 ? '#4ADE80' : pct > 50 ? '#FBBF24' : '#EF6B6B') + '">' + pct + '%</div><div class="ws-lbl">Sett.</div></div>';
+    '<div class="ws-card" onclick="openApp()"><div class="ws-val" style="color:#34d399">' + done + '</div><div class="ws-lbl">Fatti</div></div>' +
+    '<div class="ws-card" onclick="openApp()"><div class="ws-val" style="color:' + (pct === 100 ? '#34d399' : pct > 50 ? '#fbbf24' : '#f87171') + '">' + pct + '%</div><div class="ws-lbl">Sett.</div></div>';
   var ct = document.getElementById('wContent');
   var html = '<div class="wk-grid">';
   for (var i = 0; i < 7; i++) {
@@ -317,7 +317,7 @@ async function renderWeek() {
     html += '<div class="wk-day-num"><span>' + day.getDate() + '</span></div>';
     html += '<div class="wk-evts">';
     dayEvts.slice(0,3).forEach(function(ev) {
-      html += '<div class="wk-evt' + (ev.completed ? ' done-evt' : '') + '" onclick="openApp({navigate:{tab:\'week\'}})" style="background:' + (CC[ev.category]||'#5B8DEF') + '">' + ev.title.substring(0,10) + '</div>';
+      html += '<div class="wk-evt' + (ev.completed ? ' done-evt' : '') + '" onclick="openApp({navigate:{tab:\'week\'}})" style="background:' + (CC[ev.category]||'#60a5fa') + '">' + ev.title.substring(0,10) + '</div>';
     });
     if (dayEvts.length > 3) html += '<div style="font-size:10px;color:#666;text-align:center">+' + (dayEvts.length-3) + '</div>';
     html += '</div></div>';
@@ -347,12 +347,12 @@ async function renderCareer() {
   document.getElementById('wStats').innerHTML =
     '<div class="ws-card" onclick="openApp()"><div class="ws-val" style="color:#a78bfa">' + mediaHtml + '</div><div class="ws-lbl">Media</div></div>' +
     '<div class="ws-card" onclick="openApp()"><div class="ws-val">' + cfuDone + '</div><div class="ws-lbl">CFU</div></div>' +
-    '<div class="ws-card" onclick="openApp()"><div class="ws-val" style="color:#4ADE80">' + pct + '%</div><div class="ws-lbl">Percorso</div></div>';
+    '<div class="ws-card" onclick="openApp()"><div class="ws-val" style="color:#34d399">' + pct + '%</div><div class="ws-lbl">Percorso</div></div>';
   var ct = document.getElementById('wContent');
   if (!exams.length) { ct.innerHTML = '<div class="w-empty"><div class="w-empty-icon">🎓</div>Nessun esame in programma</div>'; return; }
   ct.innerHTML = exams.slice(0,5).map(function(ex) {
     var prog = ex.progress || 0;
-    var pc = prog >= 80 ? '#4ADE80' : prog >= 50 ? '#FBBF24' : '#EF6B6B';
+    var pc = prog >= 80 ? '#34d399' : prog >= 50 ? '#fbbf24' : '#f87171';
     var cdHtml = '';
     if (ex.examDate) {
       var ed = new Date(ex.examDate + 'T00:00:00');
