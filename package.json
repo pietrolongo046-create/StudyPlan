@@ -1,102 +1,25 @@
 {
   "name": "studyplan",
-  "version": "1.6.7",
-  "description": "StudyPlan - Calendario e pianificatore esami per studenti",
-  "author": "StudyPlan Team",
-  "main": "main.js",
+  "version": "1.6.8",
+  "description": "StudyPlan — Calendario e pianificatore esami per studenti universitari",
+  "author": "TechnoJaw",
+  "private": true,
   "scripts": {
-    "start": "electron .",
-    "build": "node -e \"const p=require('./package.json');const v=p.version.split('.');v[2]=+v[2]+1;if(+v[2]>=10){v[1]=+v[1]+1;v[2]=0;}p.version=v.join('.');require('fs').writeFileSync('./package.json',JSON.stringify(p,null,2)+'\\n');console.log('v'+p.version)\" && npm run minify && electron-builder --mac --win && git checkout app.js && npm run install-app && npm run copy-win",
-    "minify": "npx terser app.js -o app.min.js --compress drop_console=true,drop_debugger=true,passes=2 --mangle --format comments=false && mv app.min.js app.js",
-    "build:mac": "node -e \"const p=require('./package.json');const v=p.version.split('.');v[2]=+v[2]+1;if(+v[2]>=10){v[1]=+v[1]+1;v[2]=0;}p.version=v.join('.');require('fs').writeFileSync('./package.json',JSON.stringify(p,null,2)+'\\n');console.log('v'+p.version)\" && npm run minify && electron-builder --mac && git checkout app.js && npm run install-app",
-    "build:win": "electron-builder --win && npm run copy-win",
-    "install-app": "VER=$(node -p \"require('./package.json').version\") && APP=$(ls -d dist/mac-arm64/*.app 2>/dev/null || ls -d dist/mac/*.app 2>/dev/null) && rm -rf ~/Desktop/StudyPlan.app && ditto \"$APP\" ~/Desktop/StudyPlan.app && codesign --force --deep --sign - ~/Desktop/StudyPlan.app 2>/dev/null; xattr -cr ~/Desktop/StudyPlan.app; mkdir -p ~/Desktop/\"Le Mie App\"/StudyPlan && rm -f ~/Desktop/\"Le Mie App\"/StudyPlan/*.dmg ~/Desktop/\"Le Mie App\"/StudyPlan/*.exe && for f in dist/StudyPlan-*-arm64.dmg; do cp \"$f\" ~/Desktop/\"Le Mie App\"/StudyPlan/StudyPlan_${VER}_arm64.dmg 2>/dev/null; done; for f in dist/StudyPlan-*.dmg; do echo \"$f\" | grep -q arm64 || cp \"$f\" ~/Desktop/\"Le Mie App\"/StudyPlan/StudyPlan_${VER}_x64.dmg 2>/dev/null; done; for f in dist/\"StudyPlan Setup\"*.exe; do cp \"$f\" ~/Desktop/\"Le Mie App\"/StudyPlan/StudyPlan_${VER}.exe 2>/dev/null; done; rm -rf dist/mac-arm64 dist/mac; killall Dock 2>/dev/null; true",
-    "copy-win": "VER=$(node -p \"require('./package.json').version\") && mkdir -p ~/Desktop/\"Le Mie App\"/StudyPlan && rm -f ~/Desktop/\"Le Mie App\"/StudyPlan/*.exe && for f in dist/\"StudyPlan Setup\"*.exe; do cp \"$f\" ~/Desktop/\"Le Mie App\"/StudyPlan/StudyPlan_${VER}.exe 2>/dev/null; done; true"
-  },
-  "build": {
-    "appId": "com.studyplan.app",
-    "productName": "StudyPlan",
-    "mac": {
-      "category": "public.app-category.education",
-      "icon": "assets/studyplan-icon.icns",
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        }
-      ]
-    },
-    "dmg": {
-      "title": "StudyPlan",
-      "backgroundColor": "#0f1117",
-      "window": {
-        "width": 540,
-        "height": 380
-      },
-      "contents": [
-        {
-          "x": 150,
-          "y": 200
-        },
-        {
-          "x": 390,
-          "y": 200,
-          "type": "link",
-          "path": "/Applications"
-        }
-      ]
-    },
-    "win": {
-      "icon": "assets/studyplan-icon.ico",
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
-    "nsis": {
-      "oneClick": true,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": false,
-      "deleteAppDataOnUninstall": false,
-      "installerIcon": "assets/studyplan-icon.ico",
-      "uninstallerIcon": "assets/studyplan-icon.ico",
-      "installerHeaderIcon": "assets/studyplan-icon.ico"
-    },
-    "files": [
-      "main.js",
-      "preload.js",
-      "index.html",
-      "app.js",
-      "styles.css",
-      "widget-studyplan.html",
-      "services/**/*",
-      "fonts/**/*",
-      "assets/studyplan-icon.png",
-      "assets/studyplan-icon.icns",
-      "assets/studyplan-icon.ico",
-      "assets/studyplan-tray.png",
-      "assets/studyplan-tray@2x.png"
-    ],
-    "asar": true,
-    "directories": {
-      "output": "dist"
-    },
-    "compression": "maximum"
+    "dev":              "npx @tauri-apps/cli dev",
+    "build":            "npx @tauri-apps/cli build --bundles app",
+    "build:dmg":        "npx @tauri-apps/cli build --bundles dmg",
+    "build:all":        "npx @tauri-apps/cli build",
+    "build:mac-arm":    "npx @tauri-apps/cli build --target aarch64-apple-darwin --bundles app",
+    "build:mac-intel":  "npx @tauri-apps/cli build --target x86_64-apple-darwin --bundles app",
+    "build:win":        "npx @tauri-apps/cli build --target x86_64-pc-windows-msvc",
+    "build:ios":        "npx @tauri-apps/cli ios build",
+    "build:android":    "npx @tauri-apps/cli android build",
+    "deploy:desktop":   "VER=$(node -p \"require('./package.json').version\") && APP=$(ls -d src-tauri/target/release/bundle/macos/*.app 2>/dev/null | head -1) && rm -rf ~/Desktop/StudyPlan.app && ditto \"$APP\" ~/Desktop/StudyPlan.app && xattr -cr ~/Desktop/StudyPlan.app && codesign --force --deep --sign - ~/Desktop/StudyPlan.app && DIR=~/Desktop/Le\\ Mie\\ App/StudyPlan && mkdir -p \"$DIR\" && rm -f \"$DIR\"/*.dmg 2>/dev/null; for f in src-tauri/target/release/bundle/dmg/*.dmg; do cp \"$f\" \"$DIR/StudyPlan v.${VER}.dmg\" 2>/dev/null; done && echo \"✅ StudyPlan v$VER → Desktop + Le Mie App\"",
+    "deploy:releases":  "VER=$(node -p \"require('./package.json').version\") && mkdir -p releases && for f in src-tauri/target/release/bundle/dmg/*.dmg; do cp \"$f\" releases/StudyPlan\\ v.${VER}.dmg 2>/dev/null; done && echo \"✅ DMG v$VER → releases/\"",
+    "install":          "npm run build && npm run deploy:desktop",
+    "icons":            "python3 scripts/generate-icons.py"
   },
   "devDependencies": {
-    "electron": "^28.0.0",
-    "electron-builder": "^24.9.1",
-    "terser": "^5.46.0"
-  },
-  "dependencies": {
-    "keytar": "^7.9.0",
-    "pdf-lib": "^1.17.1"
+    "@tauri-apps/cli": "^2.10.0"
   }
 }

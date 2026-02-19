@@ -1,18 +1,24 @@
+# ═══════════════════════════════════════
+# StudyPlan — .gitignore (Tauri v2)
+# ═══════════════════════════════════════
+
+# Dependencies
 node_modules/
-dist/
-*.dmg
-*.exe
-*.blockmap
-builder-debug.yml
-builder-effective-config.yaml
+
+# Build outputs
+web-dist/
+src-tauri/target/
+releases/*.dmg
+
+# OS
 .DS_Store
 Thumbs.db
-node_modules/
-client/node_modules/
-dist/
-client/dist/
-build/
-release/
-.DS_Store
+
+# Env & logs
 .env
 *.log
+
+# IDE
+.vscode/
+.idea/
+*.swp

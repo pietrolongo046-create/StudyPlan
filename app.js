@@ -30,10 +30,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   initEventModal();
   initSettings();
   initCareer();
+  initMonth();
   renderToday();
   renderWeek();
   renderStats();
   setTimeout(scrollTimelineToNow, 300);
+
+  // Show window only after DOM is fully rendered (avoids flash)
+  if (window.api.showMainWindow) {
+    window.api.showMainWindow();
+  }
+
   // Update timeline only when tab is visible AND document is focused (saves battery)
   setInterval(() => { if (document.hasFocus() && document.querySelector('#tab-today.active')) renderTimeline(); }, 60000);
 
@@ -61,6 +68,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('tab-' + data.tab).classList.add('active');
         if (data.tab === 'today') { renderToday(); setTimeout(scrollTimelineToNow, 100); }
         if (data.tab === 'week') renderWeek();
+        if (data.tab === 'month') renderMonth();
         if (data.tab === 'career') renderCareer();
         if (data.tab === 'stats') renderStats();
       }
@@ -82,6 +90,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
   }
+
+  // Privacy Shield: mostra/nascondi quando la finestra perde/riacquista il focus
+  if (window.api && window.api.onBlur) {
+    window.api.onBlur((blurred) => {
+      // Controlla se la privacy è abilitata nelle impostazioni
+      const privacyEnabled = settings && settings.privacyBlurEnabled !== false;
+      const shield = document.getElementById('privacyShield');
+      if (!shield || !privacyEnabled) return;
+      if (blurred) {
+        shield.style.display = 'flex';
+        shield.style.pointerEvents = 'auto';
+        // Piccolo ritardo per permettere la transizione CSS
+        requestAnimationFrame(() => { shield.style.opacity = '1'; });
+      } else {
+        shield.style.opacity = '0';
+        shield.style.pointerEvents = 'none';
+        setTimeout(() => { shield.style.display = 'none'; }, 300);
+      }
+    });
+  }
 });
 
 // ===== NAVIGATION =====
@@ -94,6 +122,7 @@ function initNav() {
       document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
       if (btn.dataset.tab === 'today') { renderToday(); setTimeout(scrollTimelineToNow, 100); }
       if (btn.dataset.tab === 'week') renderWeek();
+      if (btn.dataset.tab === 'month') renderMonth();
       if (btn.dataset.tab === 'career') renderCareer();
       if (btn.dataset.tab === 'stats') renderStats();
     });
@@ -508,6 +537,102 @@ function initWeekInteractions() {
 }
 
 
+// ===== MONTH TAB =====
+let currentMonthOffset = 0;
+
+function initMonth() {
+  document.getElementById('monthPrev')?.addEventListener('click', () => { currentMonthOffset--; renderMonth(); });
+  document.getElementById('monthNext')?.addEventListener('click', () => { currentMonthOffset++; renderMonth(); });
+  document.getElementById('monthToday')?.addEventListener('click', () => { currentMonthOffset = 0; renderMonth(); });
+}
+
+function renderMonth() {
+  const now = new Date();
+  const viewDate = new Date(now.getFullYear(), now.getMonth() + currentMonthOffset, 1);
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  document.getElementById('monthTitle').textContent = MONTHS_IT[month] + ' ' + year;
+
+  // Header row (day names)
+  const headerEl = document.getElementById('monthGridHeader');
+  headerEl.innerHTML = ['LUN','MAR','MER','GIO','VEN','SAB','DOM'].map(d =>
+    '<div class="month-day-header">' + d + '</div>'
+  ).join('');
+
+  // Calculate grid
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  let startDow = (firstDay.getDay() + 6) % 7; // 0=Mon
+  const totalDays = lastDay.getDate();
+
+  const gridEl = document.getElementById('monthGrid');
+  let html = '';
+
+  // Empty cells before first day
+  for (let i = 0; i < startDow; i++) {
+    html += '<div class="month-cell month-cell-empty"></div>';
+  }
+
+  // Day cells
+  for (let d = 1; d <= totalDays; d++) {
+    const dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    const dayEvents = events.filter(e => e.date === dateStr).sort((a, b) => a.timeStart.localeCompare(b.timeStart));
+    const isToday = dateStr === todayStr;
+    const isWeekend = ((startDow + d - 1) % 7) >= 5;
+
+    html += '<div class="month-cell' + (isToday ? ' month-cell-today' : '') + (isWeekend ? ' month-cell-weekend' : '') + '" data-date="' + dateStr + '">';
+    html += '<div class="month-cell-day">' + d + '</div>';
+    if (dayEvents.length > 0) {
+      html += '<div class="month-cell-events">';
+      const show = dayEvents.slice(0, 3);
+      show.forEach(ev => {
+        const color = CAT_COLORS[ev.category] || '#8070d0';
+        const done = ev.completed ? ' month-ev-done' : '';
+        html += '<div class="month-ev' + done + '" style="--ev-color:' + color + '">';
+        html += '<span class="month-ev-time">' + (ev.timeStart || '').slice(0, 5) + '</span>';
+        html += '<span class="month-ev-title">' + escapeHTML(ev.title || '') + '</span>';
+        html += '</div>';
+      });
+      if (dayEvents.length > 3) {
+        html += '<div class="month-ev-more">+' + (dayEvents.length - 3) + ' altro</div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  gridEl.innerHTML = html;
+
+  // Click on day → go to today tab with that date selected
+  gridEl.querySelectorAll('.month-cell[data-date]').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const date = cell.dataset.date;
+      // Open event modal for that date
+      openNewEventForDate(date);
+    });
+  });
+}
+
+function openNewEventForDate(dateStr) {
+  document.getElementById('eventModal').classList.add('active');
+  document.getElementById('eventModalTitle').textContent = 'Nuovo impegno';
+  document.getElementById('eventForm').reset();
+  document.getElementById('eventDate').value = dateStr;
+  document.getElementById('eventId').value = '';
+  document.getElementById('eventDelete').style.display = 'none';
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.cat-btn[data-cat="lezione"]')?.classList.add('active');
+}
+
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+
 // ===== STATS TAB =====
 function renderStats() {
   const now=new Date(),todayStr=now.toISOString().split('T')[0];
@@ -568,10 +693,26 @@ function openEditEvent(ev){document.getElementById('eventModalTitle').textConten
 // ===== SETTINGS =====
 function initSettings() {
   const modal=document.getElementById('settingsModal');
-  document.getElementById('btnSettings').addEventListener('click',()=>{document.getElementById('settMorningOn').checked=settings.morningNotif;document.getElementById('settEveningOn').checked=settings.eveningNotif;document.getElementById('settMorningTime').value=settings.morningTime||'07:30';document.getElementById('settEveningTime').value=settings.eveningTime||'21:00';openModal(modal);});
+  document.getElementById('btnSettings').addEventListener('click',()=>{
+    document.getElementById('settMorningOn').checked=settings.morningNotif!==false;
+    document.getElementById('settAfternoonOn').checked=settings.afternoonNotif!==false;
+    document.getElementById('settEveningOn').checked=settings.eveningNotif!==false;
+    document.getElementById('settMorningTime').value=settings.morningTime||'07:30';
+    document.getElementById('settAfternoonTime').value=settings.afternoonTime||'14:00';
+    document.getElementById('settEveningTime').value=settings.eveningTime||'21:00';
+    openModal(modal);
+  });
   document.getElementById('settingsModalClose').addEventListener('click',()=>closeModal(modal));
   modal.addEventListener('click',e=>{if(e.target===modal)closeModal(modal);});
-  document.getElementById('settingsSave').addEventListener('click',async()=>{settings.morningNotif=document.getElementById('settMorningOn').checked;settings.eveningNotif=document.getElementById('settEveningOn').checked;settings.morningTime=document.getElementById('settMorningTime').value;settings.eveningTime=document.getElementById('settEveningTime').value;await window.api.saveSettings(settings);closeModal(modal);showToast('Impostazioni salvate');});
+  document.getElementById('settingsSave').addEventListener('click',async()=>{
+    settings.morningNotif=document.getElementById('settMorningOn').checked;
+    settings.afternoonNotif=document.getElementById('settAfternoonOn').checked;
+    settings.eveningNotif=document.getElementById('settEveningOn').checked;
+    settings.morningTime=document.getElementById('settMorningTime').value;
+    settings.afternoonTime=document.getElementById('settAfternoonTime').value;
+    settings.eveningTime=document.getElementById('settEveningTime').value;
+    await window.api.saveSettings(settings);closeModal(modal);showToast('Impostazioni salvate');
+  });
 }
 
 // ===== UTILITIES =====

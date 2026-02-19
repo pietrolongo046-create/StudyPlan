@@ -2,7 +2,6 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'none';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StudyPlan</title>
   <style>
@@ -18,7 +17,7 @@
 </head>
 <body>
   <!-- PRIVACY SHIELD -->
-  <div id="privacyShield" style="position:fixed;inset:0;z-index:99999;background:rgba(12,13,20,0.6);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);display:flex;align-items:center;justify-content:center;transition:opacity 0.3s;opacity:0;pointer-events:none;cursor:pointer;" onclick="this.style.opacity='0';this.style.pointerEvents='none';">
+  <div id="privacyShield" style="position:fixed;inset:0;z-index:99999;background:rgba(12,13,20,0.6);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);display:none;align-items:center;justify-content:center;transition:opacity 0.3s;opacity:0;pointer-events:none;cursor:pointer;" onclick="this.style.opacity='0';this.style.pointerEvents='none';this.style.display='none';">
     <div style="text-align:center;">
       <div style="width:80px;height:80px;border-radius:50%;background:rgba(128,112,208,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;animation:pulse 2s infinite;">
         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8070d0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -52,6 +51,10 @@
     <button class="nav-btn" data-tab="week">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       <span>Settimana</span>
+    </button>
+    <button class="nav-btn" data-tab="month">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><rect x="7" y="13" width="3" height="3" rx="0.5"/></svg>
+      <span>Mese</span>
     </button>
     <button class="nav-btn" data-tab="stats">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -175,6 +178,18 @@
         <!-- Exam list -->
         <div class="career-exam-list" id="careerExamList"></div>
       </div>
+    </section>
+
+    <!-- MONTH -->
+    <section class="tab-panel" id="tab-month">
+      <div class="week-header">
+        <button class="btn-icon" id="monthPrev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+        <h2 id="monthTitle"></h2>
+        <button class="btn-icon" id="monthNext"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
+        <button class="btn-secondary" id="monthToday">Oggi</button>
+      </div>
+      <div class="month-grid-header" id="monthGridHeader"></div>
+      <div class="month-grid" id="monthGrid"></div>
     </section>
 
     <!-- STATS -->
@@ -326,13 +341,15 @@
       <div class="modal-header"><h2>Impostazioni</h2><button class="btn-icon modal-close" id="settingsModalClose"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
       <div class="settings-body">
         <div class="setting-row"><div><div class="setting-label">Notifica mattutina</div><div class="setting-desc">Riepilogo impegni della giornata</div></div><div class="setting-controls"><input type="time" id="settMorningTime" value="07:30"><label class="toggle"><input type="checkbox" id="settMorningOn" checked><span class="toggle-slider"></span></label></div></div>
-        <div class="setting-row"><div><div class="setting-label">Notifica serale</div><div class="setting-desc">Riepilogo completamento giornata</div></div><div class="setting-controls"><input type="time" id="settEveningTime" value="21:00"><label class="toggle"><input type="checkbox" id="settEveningOn" checked><span class="toggle-slider"></span></label></div></div>
+        <div class="setting-row"><div><div class="setting-label">Notifica pomeridiana</div><div class="setting-desc">Promemoria impegni rimanenti</div></div><div class="setting-controls"><input type="time" id="settAfternoonTime" value="14:00"><label class="toggle"><input type="checkbox" id="settAfternoonOn" checked><span class="toggle-slider"></span></label></div></div>
+        <div class="setting-row"><div><div class="setting-label">Notifica serale</div><div class="setting-desc">Riepilogo completamento + anteprima domani</div></div><div class="setting-controls"><input type="time" id="settEveningTime" value="21:00"><label class="toggle"><input type="checkbox" id="settEveningOn" checked><span class="toggle-slider"></span></label></div></div>
       </div>
       <div class="modal-actions"><div class="spacer"></div><button class="btn-primary" id="settingsSave">Salva</button></div>
     </div>
   </div>
 
   <div id="toast" class="toast"></div>
+  <script src="tauri-bridge.js"></script>
   <script src="app.js"></script>
   <script>
     // Privacy Blur
@@ -340,8 +357,15 @@
       window.api.onBlur(function(val) {
         var shield = document.getElementById('privacyShield');
         if (shield) {
-          shield.style.opacity = val ? '1' : '0';
-          shield.style.pointerEvents = val ? 'auto' : 'none';
+          if (val) {
+            shield.style.display = 'flex';
+            setTimeout(function() { shield.style.opacity = '1'; }, 10);
+            shield.style.pointerEvents = 'auto';
+          } else {
+            shield.style.opacity = '0';
+            shield.style.pointerEvents = 'none';
+            setTimeout(function() { shield.style.display = 'none'; }, 300);
+          }
         }
       });
     }
