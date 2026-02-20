@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "StudyPlan",
-  "version": "1.6.8",
-  "identifier": "com.technojaw.studyplan",
+  "version": "1.6.9",
+  "identifier": "com.pietrolongo.studyplan",
   "build": {
     "frontendDist": "../web-dist",
     "devUrl": "http://localhost:1420",
@@ -52,7 +52,9 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app"],
+    "targets": [
+      "app"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
