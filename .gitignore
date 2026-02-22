@@ -29,3 +29,8 @@ release/
 *.blockmap
 .env.local
 electron/
+build/
+supabase/.temp/
+.tauri/
+.vite/
+.next/
