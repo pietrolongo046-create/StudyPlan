@@ -269,35 +269,37 @@ var activeTab = 'today';
     if (e.button !== 0) return;
     if (e.target.closest('.wh-tab') || e.target.closest('.wh-btn')) return;
     e.preventDefault();
-    if (window.__TAURI__ && window.__TAURI__.window) {
-      var currentWin = window.__TAURI__.window.getCurrentWindow();
-      if (currentWin && currentWin.startDragging) {
-        currentWin.startDragging();
+    var T = window.__TAURI__;
+    if (T) {
+      var mod = T.webviewWindow || T.window;
+      if (mod && mod.getCurrentWindow) {
+        mod.getCurrentWindow().startDragging();
       }
     }
   });
 })();
 
 /* ── Close widget ── */
-function closeWidget() {
+async function closeWidget() {
   try {
-    // Primary: use getCurrentWindow().hide() — most reliable
-    if (window.__TAURI__ && window.__TAURI__.window) {
-      var currentWin = window.__TAURI__.window.getCurrentWindow();
-      if (currentWin && currentWin.hide) {
-        currentWin.hide();
+    // Tauri v2: try webviewWindow first, then window
+    var T = window.__TAURI__;
+    if (T) {
+      var mod = T.webviewWindow || T.window;
+      if (mod && mod.getCurrentWindow) {
+        await mod.getCurrentWindow().hide();
         return;
       }
     }
-  } catch(e) {}
+  } catch(e) { console.warn('hide failed:', e); }
   try {
-    // Fallback: invoke toggle_widget command
-    if (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) {
-      window.__TAURI__.core.invoke('toggle_widget');
+    // Fallback: invoke toggle_widget command via Rust
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      await window.__TAURI__.core.invoke('toggle_widget');
       return;
     }
-  } catch(e2) {}
-  // Last resort: try window.close()
+  } catch(e2) { console.warn('toggle_widget failed:', e2); }
+  // Last resort
   try { window.close(); } catch(e3) {}
 }
 

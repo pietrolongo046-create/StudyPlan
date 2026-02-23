@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
-Genera icon-master.png 1024×1024 usando i path esatti di lucide-react
-GraduationCap (v0.574.0) con il colore primario reale dell'app: #8070d0 (viola).
+Genera icon-master.png 1024×1024 dal SVG ESATTO della sidebar.
 
-Paths lucide GraduationCap (viewBox 0 0 24):
-  path1: "M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"
-  path2: "M22 10v6"
-  path3: "M6 12.5V16a6 3 0 0 0 12 0v-3.5"
+Copia-incolla dei path SVG dalla sidebar di StudyPlan:
 
-Disegno con svgpathtools + Pillow.
+  <path d="M22 10v6M2 10l10-5 10 5-10 5z" fill="#8070d0" stroke="#8070d0" stroke-width="2"/>
+  <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5" fill="none" stroke="white" stroke-width="2"/>
+
+Usa svgpathtools + Pillow.
 Poi lancia generate-icons.py.
 """
 
@@ -20,6 +19,7 @@ try:
     from svgpathtools import parse_path
 except ImportError as e:
     print(f"❌ Dipendenza mancante: {e}")
+    print("   pip3 install Pillow svgpathtools")
     sys.exit(1)
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -30,10 +30,10 @@ OX      = (SIZE - ICON_PX) // 2
 OY      = (SIZE - ICON_PX) // 2
 SCALE   = ICON_PX / 24.0
 
-PRIMARY_RGB = (128, 112, 208)   # #8070d0 — var(--primary) reale dell'app
+PRIMARY_RGB = (128, 112, 208)   # #8070d0 — var(--primary)
 WHITE_RGB   = (255, 255, 255)
 BG_RGB      = (8, 9, 15)        # #08090f
-SW          = max(3, round(SCALE * 1.8))
+SW          = max(3, round(SCALE * 2.0))
 
 
 def to_px(c: complex) -> tuple:
@@ -66,25 +66,31 @@ bg_draw.rounded_rectangle([(0,0),(SIZE-1,SIZE-1)], radius=int(SIZE*0.22), fill=(
 canvas = Image.alpha_composite(canvas, bg)
 draw = ImageDraw.Draw(canvas)
 
-print("📐  Campionamento path lucide GraduationCap (v0.574.0)…")
+print("📐  Rendering SVG esatto dalla sidebar…")
 
-# ─── PATH 1 — forma chiusa cappello (fill + stroke PRIMARY) ──────────────────
-d1 = "M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"
-pts1 = sample_path(d1, 500)
-flat1 = [(x, y) for x, y in pts1]
-draw.polygon(flat1, fill=(*PRIMARY_RGB, 255), outline=(*PRIMARY_RGB, 255))
+# ═══ COPIA-INCOLLA ESATTO dalla sidebar ═══
+# <path d="M22 10v6M2 10l10-5 10 5-10 5z" fill="#8070d0" stroke="#8070d0" stroke-width="2"/>
+# <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5" fill="none" stroke="white" stroke-width="2"/>
 
-# ─── PATH 2 — asta verticale destra (stroke PRIMARY) ─────────────────────────
-draw_stroke(draw, [to_px(22+10j), to_px(22+16j)], (*PRIMARY_RGB, 255), SW)
+# ─── PATH 1a — "M22 10v6" → asta verticale destra (stroke PRIMARY) ───────────
+pts_vert = [to_px(22+10j), to_px(22+16j)]
+draw_stroke(draw, pts_vert, (*PRIMARY_RGB, 255), SW)
 
-# ─── PATH 3 — base arrotondata ellisse (stroke WHITE) ────────────────────────
-d3 = "M6 12.5V16a6 3 0 0 0 12 0v-3.5"
-pts3 = sample_path(d3, 400)
-draw_stroke(draw, pts3, (*WHITE_RGB, 255), SW)
+# ─── PATH 1b — "M2 10l10-5 10 5-10 5z" → diamante cappello (fill + stroke PRIMARY) ──
+d_diamond = "M2 10l10-5 10 5-10 5z"
+pts_diamond = sample_path(d_diamond, 500)
+flat_diamond = [(x, y) for x, y in pts_diamond]
+draw.polygon(flat_diamond, fill=(*PRIMARY_RGB, 255), outline=(*PRIMARY_RGB, 255))
+draw_stroke(draw, pts_diamond, (*PRIMARY_RGB, 255), SW)
+
+# ─── PATH 2 — "M6 12v5c0 2 3 3 6 3s6-1 6-3v-5" → base arrotondata (stroke WHITE) ──
+d_base = "M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"
+pts_base = sample_path(d_base, 400)
+draw_stroke(draw, pts_base, (*WHITE_RGB, 255), SW)
 
 # ─── Salva ────────────────────────────────────────────────────────────────────
 canvas.save(OUT, "PNG")
-print(f"✅  Salvato: {OUT}")
+print(f"✅  icon-master.png salvato: {OUT}")
 
 gen = ROOT / "scripts" / "generate-icons.py"
 print("\n🔧  Avvio generate-icons.py…")
