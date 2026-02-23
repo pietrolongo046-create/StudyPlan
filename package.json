@@ -1,6 +1,6 @@
 {
   "name": "studyplan",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "description": "StudyPlan — Calendario e pianificatore esami per studenti universitari",
   "author": "TechnoJaw",
   "private": true,
@@ -12,8 +12,6 @@
     "build:mac-arm": "npx @tauri-apps/cli build --target aarch64-apple-darwin --bundles app",
     "build:mac-intel": "npx @tauri-apps/cli build --target x86_64-apple-darwin --bundles app",
     "build:win": "npx @tauri-apps/cli build --target x86_64-pc-windows-msvc",
-    "build:ios": "npx @tauri-apps/cli ios build",
-    "build:android": "npx @tauri-apps/cli android build",
     "deploy:desktop": "VER=$(node -p \"require('./package.json').version\") && APP=$(ls -d src-tauri/target/release/bundle/macos/*.app 2>/dev/null | head -1) && rm -rf ~/Desktop/StudyPlan.app && ditto \"$APP\" ~/Desktop/StudyPlan.app && xattr -cr ~/Desktop/StudyPlan.app && codesign --force --deep --sign - ~/Desktop/StudyPlan.app && DIR=~/Desktop/Le\\ Mie\\ App/StudyPlan && mkdir -p \"$DIR\" && rm -f \"$DIR\"/*.dmg 2>/dev/null; for f in src-tauri/target/release/bundle/dmg/*.dmg; do cp \"$f\" \"$DIR/StudyPlan v.${VER}.dmg\" 2>/dev/null; done && echo \"✅ StudyPlan v$VER → Desktop + Le Mie App\"",
     "deploy:releases": "VER=$(node -p \"require('./package.json').version\") && mkdir -p releases && for f in src-tauri/target/release/bundle/dmg/*.dmg; do cp \"$f\" releases/StudyPlan\\ v.${VER}.dmg 2>/dev/null; done && echo \"✅ DMG v$VER → releases/\"",
     "install": "npm run build && npm run deploy:desktop",
