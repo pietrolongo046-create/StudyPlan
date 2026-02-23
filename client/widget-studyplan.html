@@ -260,6 +260,27 @@ var MO = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic
 var CC = { lezione:'#60a5fa', studio:'#8070d0', esame:'#f87171', progetto:'#34d399', personale:'#fbbf24', pausa:'#2dd4bf' };
 var activeTab = 'today';
 
+/* ── Helper: get current Tauri window (Tauri v2 compatible) ── */
+function getTauriWindow() {
+  var T = window.__TAURI__;
+  if (!T) return null;
+  // Tauri v2: try multiple paths
+  if (T.webviewWindow && T.webviewWindow.getCurrentWindow) {
+    return T.webviewWindow.getCurrentWindow();
+  }
+  if (T.window && T.window.getCurrentWindow) {
+    return T.window.getCurrentWindow();
+  }
+  // Tauri v2 with WebviewWindow class
+  if (T.webviewWindow && T.webviewWindow.WebviewWindow) {
+    try { return T.webviewWindow.WebviewWindow.getCurrent(); } catch(e) {}
+  }
+  if (T.window && T.window.Window) {
+    try { return T.window.Window.getCurrent(); } catch(e) {}
+  }
+  return null;
+}
+
 /* ── Drag manuale via Tauri startDragging ── */
 (function() {
   var header = document.querySelector('.wh');
@@ -269,36 +290,36 @@ var activeTab = 'today';
     if (e.button !== 0) return;
     if (e.target.closest('.wh-tab') || e.target.closest('.wh-btn')) return;
     e.preventDefault();
-    var T = window.__TAURI__;
-    if (T) {
-      var mod = T.webviewWindow || T.window;
-      if (mod && mod.getCurrentWindow) {
-        mod.getCurrentWindow().startDragging();
-      }
+    // Try direct Tauri window API
+    var win = getTauriWindow();
+    if (win && win.startDragging) {
+      win.startDragging();
+      return;
+    }
+    // Fallback: invoke via Rust IPC
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      window.__TAURI__.core.invoke('plugin:window|start_dragging', { label: 'widget' }).catch(function() {});
     }
   });
 })();
 
 /* ── Close widget ── */
 async function closeWidget() {
+  // Strategy 1: invoke toggle_widget via Rust (most reliable)
   try {
-    // Tauri v2: try webviewWindow first, then window
-    var T = window.__TAURI__;
-    if (T) {
-      var mod = T.webviewWindow || T.window;
-      if (mod && mod.getCurrentWindow) {
-        await mod.getCurrentWindow().hide();
-        return;
-      }
-    }
-  } catch(e) { console.warn('hide failed:', e); }
-  try {
-    // Fallback: invoke toggle_widget command via Rust
     if (window.__TAURI__ && window.__TAURI__.core) {
       await window.__TAURI__.core.invoke('toggle_widget');
       return;
     }
-  } catch(e2) { console.warn('toggle_widget failed:', e2); }
+  } catch(e) { console.warn('toggle_widget failed:', e); }
+  // Strategy 2: try Tauri window API hide
+  try {
+    var win = getTauriWindow();
+    if (win && win.hide) {
+      await win.hide();
+      return;
+    }
+  } catch(e2) { console.warn('hide failed:', e2); }
   // Last resort
   try { window.close(); } catch(e3) {}
 }

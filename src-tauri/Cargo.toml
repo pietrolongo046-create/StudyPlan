@@ -35,3 +35,10 @@ rand = "0.8"
 whoami = "1"
 open = "5"
 image = { version = "0.25", default-features = false, features = ["png"] }
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = "thin"
+opt-level = "s"
+strip = true
