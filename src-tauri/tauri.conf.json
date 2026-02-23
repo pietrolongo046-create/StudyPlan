@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "StudyPlan",
-  "version": "1.9.2",
+  "version": "1.9.3",
   "identifier": "com.pietrolongo.studyplan",
   "build": {
     "frontendDist": "../web-dist",
@@ -39,7 +39,7 @@
         "minHeight": 240,
         "decorations": false,
         "transparent": true,
-        "alwaysOnTop": true,
+        "alwaysOnTop": false,
         "resizable": true,
         "visible": false,
         "skipTaskbar": true,
