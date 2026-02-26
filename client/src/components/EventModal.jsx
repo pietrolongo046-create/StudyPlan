@@ -5,6 +5,21 @@ import { CAT_COLORS, CAT_LABELS, generateId } from '../lib/constants';
 const CATEGORIES = Object.keys(CAT_COLORS);
 
 export default function EventModal({ show, event, defaultDate, onClose, onSave, onDelete }) {
+  // Dynamic default: next half-hour from now
+  const getNextHalfHour = () => {
+    const n = new Date();
+    let m = n.getMinutes();
+    let h = n.getHours();
+    m = m < 30 ? 30 : 0;
+    if (m === 0) h = (h + 1) % 24;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  };
+  const getEndFromStart = (start) => {
+    const [h, m] = start.split(':').map(Number);
+    const eh = (h + 1) % 24;
+    return `${String(eh).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  };
+
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [timeStart, setTimeStart] = useState('09:00');
@@ -33,10 +48,11 @@ export default function EventModal({ show, event, defaultDate, onClose, onSave, 
         setReminder2On(event.reminders?.sameDay?.enabled || false);
         setReminder2Time(event.reminders?.sameDay?.time || '07:00');
       } else {
+        const nextTime = getNextHalfHour();
         setTitle('');
         setDate(defaultDate || new Date().toISOString().split('T')[0]);
-        setTimeStart('09:00');
-        setTimeEnd('10:00');
+        setTimeStart(nextTime);
+        setTimeEnd(getEndFromStart(nextTime));
         setCategory('lezione');
         setNotes('');
         setReminder1On(false);

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{Manager, State, AppHandle, Emitter};
 use tauri_plugin_notification::NotificationExt;
-use chrono::Datelike;
+use chrono::{Datelike, TimeZone as _};
 
 // ===== State =====
 pub struct AppState {
@@ -417,169 +417,251 @@ fn get_widget_career(state: State<AppState>) -> Value {
 }
 
 // ===== Notification Scheduler (runs in background) =====
+// REWRITTEN: epoch-based window approach (same as LexFlow).
+// Old approach used string equality (current_minute == "07:30") which:
+//   - Missed notifications if thread woke up at XX:YY:58 → next check at XX:YY+1:58
+//   - Missed notifications after sleep/wake (skipped minutes entirely)
+//   - Had no persistence → duplicates after app restart
+// New approach: remember last_checked timestamp; fire anything whose scheduled
+// time falls in (last_checked, now]. This catches all skipped minutes.
+const NOTIF_SENT_FILE: &str = ".notification-sent.json";
+const NOTIF_LAST_CHECKED_FILE: &str = ".notif-last-checked";
+
 fn start_notification_scheduler(app: AppHandle, state: std::sync::Arc<Mutex<PathBuf>>) {
     std::thread::spawn(move || {
-        let mut last_minute = String::new();
-        loop {
-            // Sleep 60s — we only need once-per-minute precision (checks HH:MM)
-            std::thread::sleep(std::time::Duration::from_secs(60));
-            
-            let now = chrono::Local::now();
-            let current_minute = now.format("%H:%M").to_string();
-            
-            if current_minute == last_minute {
-                continue;
+        let dir = state.lock().unwrap().clone();
+        let last_checked_path = dir.join(NOTIF_LAST_CHECKED_FILE);
+        let sent_path = dir.join(NOTIF_SENT_FILE);
+
+        eprintln!("[StudyPlan Scheduler] Started — data_dir: {:?}", dir);
+
+        // Load persisted last_checked from disk; fall back to now-65s
+        let mut last_checked: chrono::DateTime<chrono::Local> = {
+            let from_disk = std::fs::read_to_string(&last_checked_path)
+                .ok()
+                .and_then(|s| chrono::DateTime::parse_from_rfc3339(s.trim()).ok())
+                .map(|dt| dt.with_timezone(&chrono::Local));
+            match from_disk {
+                Some(persisted) => {
+                    // Cap catchup to 24h — avoids spamming old events after long absence
+                    let cap = chrono::Local::now() - chrono::Duration::hours(24);
+                    if persisted < cap { cap } else { persisted }
+                },
+                None => chrono::Local::now() - chrono::Duration::seconds(65),
             }
-            last_minute = current_minute.clone();
-            
-            let dir = state.lock().unwrap().clone();
+        };
+        // Persist immediately so crash loop doesn't replay forever
+        let _ = std::fs::write(&last_checked_path, last_checked.to_rfc3339());
+
+        // Load persisted sent log from disk
+        let mut sent: Vec<String> = std::fs::read_to_string(&sent_path)
+            .ok()
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or_default();
+
+        // Helper: check if "HH:MM" on a given date falls in (window_start, now]
+        let time_in_window = |date_str: &str, time_str: &str,
+                              window_start: chrono::DateTime<chrono::Local>,
+                              now: chrono::DateTime<chrono::Local>| -> bool {
+            if time_str.len() < 5 { return false; }
+            let dt_str = format!("{} {}", date_str, time_str);
+            if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(&dt_str, "%Y-%m-%d %H:%M") {
+                if let Some(t) = chrono::Local.from_local_datetime(&dt).single() {
+                    return t > window_start && t <= now;
+                }
+            }
+            false
+        };
+
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(30));
+
+            let now = chrono::Local::now();
+            let window_start = last_checked;
+            last_checked = now;
+            // Persist so next startup knows where we got to
+            let _ = std::fs::write(&last_checked_path, now.to_rfc3339());
+
             let today = now.format("%Y-%m-%d").to_string();
             let tomorrow = (now + chrono::Duration::days(1)).format("%Y-%m-%d").to_string();
-            
-            // Per-event reminders
+            let mut new_sent = false;
+
+            let dir = state.lock().unwrap().clone();
+
+            // ── Per-event reminders ──
             let mut events = read_json(&dir, "events", Value::Array(vec![]));
-            let mut dirty = false;
-            
+            let mut events_dirty = false;
+
             if let Value::Array(ref mut arr) = events {
                 for event in arr.iter_mut() {
-                    if let Some(reminders) = event.get("reminders").and_then(|r| r.as_array()).cloned() {
-                        let sent: Vec<String> = event.get("remindersSent")
-                            .and_then(|s| s.as_array())
-                            .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
-                            .unwrap_or_default();
-                        
-                        let mut new_sent = sent.clone();
-                        
-                        for rem in &reminders {
-                            let rem_type = rem.get("type").and_then(|t| t.as_str()).unwrap_or("");
-                            let rem_time = rem.get("time").and_then(|t| t.as_str()).unwrap_or("");
-                            let rem_key = format!("{}:{}", rem_type, rem_time);
-                            
-                            if sent.contains(&rem_key) {
-                                continue;
+                    let reminders_obj = match event.get("reminders") {
+                        Some(r) if r.is_object() => r.clone(),
+                        _ => continue,
+                    };
+                    let event_sent: Vec<String> = event.get("remindersSent")
+                        .and_then(|s| s.as_array())
+                        .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                        .unwrap_or_default();
+
+                    let mut event_new_sent = event_sent.clone();
+                    let event_date = event.get("date").and_then(|d| d.as_str()).unwrap_or("");
+                    let title_text = event.get("title").and_then(|t| t.as_str()).unwrap_or("Evento");
+                    let time_start = event.get("timeStart").and_then(|t| t.as_str()).unwrap_or("");
+
+                    // dayBefore: fires the evening before at the specified time
+                    if let Some(db) = reminders_obj.get("dayBefore") {
+                        let enabled = db.get("enabled").and_then(|v| v.as_bool()).unwrap_or(false);
+                        let rem_time = db.get("time").and_then(|v| v.as_str()).unwrap_or("");
+                        let rem_key = format!("day-before:{}:{}", event_date, rem_time);
+                        if enabled && !event_sent.contains(&rem_key) {
+                            // Compute the day before: event_date - 1 day
+                            if let Ok(edate) = chrono::NaiveDate::parse_from_str(event_date, "%Y-%m-%d") {
+                                let day_before = (edate - chrono::Duration::days(1)).format("%Y-%m-%d").to_string();
+                                if time_in_window(&day_before, rem_time, window_start, now) {
+                                    eprintln!("[StudyPlan] Firing dayBefore reminder for '{}'", title_text);
+                                    let _ = app.notification()
+                                        .builder()
+                                        .title("StudyPlan — Promemoria domani")
+                                        .body(&format!("Domani: {} alle {}", title_text, time_start))
+                                        .show();
+                                    event_new_sent.push(rem_key);
+                                    events_dirty = true;
+                                }
                             }
-                            
-                            let event_date = event.get("date").and_then(|d| d.as_str()).unwrap_or("");
-                            let should_fire = match rem_type {
-                                "day-before" => event_date == tomorrow && current_minute == rem_time,
-                                "same-day" => event_date == today && current_minute == rem_time,
-                                _ => false,
-                            };
-                            
-                            if should_fire {
-                                let title_text = event.get("title").and_then(|t| t.as_str()).unwrap_or("Evento");
-                                let time_start = event.get("timeStart").and_then(|t| t.as_str()).unwrap_or("");
-                                let is_day_before = rem_type == "day-before";
-                                
-                                let notif_title = if is_day_before {
-                                    "StudyPlan — Promemoria domani".to_string()
-                                } else {
-                                    "StudyPlan — Promemoria oggi".to_string()
-                                };
-                                let notif_body = if is_day_before {
-                                    format!("Domani: {} alle {}", title_text, time_start)
-                                } else {
-                                    format!("Oggi: {} alle {}", title_text, time_start)
-                                };
-                                
+                        }
+                    }
+
+                    // sameDay: fires the morning of at the specified time
+                    if let Some(sd) = reminders_obj.get("sameDay") {
+                        let enabled = sd.get("enabled").and_then(|v| v.as_bool()).unwrap_or(false);
+                        let rem_time = sd.get("time").and_then(|v| v.as_str()).unwrap_or("");
+                        let rem_key = format!("same-day:{}:{}", event_date, rem_time);
+                        if enabled && !event_sent.contains(&rem_key) {
+                            if time_in_window(event_date, rem_time, window_start, now) {
+                                eprintln!("[StudyPlan] Firing sameDay reminder for '{}'", title_text);
                                 let _ = app.notification()
                                     .builder()
-                                    .title(&notif_title)
-                                    .body(&notif_body)
+                                    .title("StudyPlan — Promemoria oggi")
+                                    .body(&format!("Oggi: {} alle {}", title_text, time_start))
                                     .show();
-                                
-                                new_sent.push(rem_key);
-                                dirty = true;
+                                event_new_sent.push(rem_key);
+                                events_dirty = true;
                             }
                         }
-                        
-                        if new_sent.len() > sent.len() {
-                            event["remindersSent"] = Value::Array(
-                                new_sent.into_iter().map(|s| Value::String(s)).collect()
-                            );
-                        }
+                    }
+
+                    if event_new_sent.len() > event_sent.len() {
+                        event["remindersSent"] = Value::Array(
+                            event_new_sent.into_iter().map(|s| Value::String(s)).collect()
+                        );
                     }
                 }
             }
-            
-            if dirty {
+
+            if events_dirty {
                 write_json(&dir, "events", &events);
             }
-            
-            // Global morning/afternoon/evening summary
+
+            // ── Global morning/afternoon/evening summary ──
             let settings = read_json(&dir, "settings", serde_json::json!({
                 "morningNotif": true, "afternoonNotif": true, "eveningNotif": true,
                 "morningTime": "07:30", "afternoonTime": "14:00", "eveningTime": "21:00"
             }));
-            
+
             let morning_enabled = settings.get("morningNotif").and_then(|v| v.as_bool()).unwrap_or(true);
             let afternoon_enabled = settings.get("afternoonNotif").and_then(|v| v.as_bool()).unwrap_or(true);
             let evening_enabled = settings.get("eveningNotif").and_then(|v| v.as_bool()).unwrap_or(true);
             let morning_time = settings.get("morningTime").and_then(|v| v.as_str()).unwrap_or("07:30");
             let afternoon_time = settings.get("afternoonTime").and_then(|v| v.as_str()).unwrap_or("14:00");
             let evening_time = settings.get("eveningTime").and_then(|v| v.as_str()).unwrap_or("21:00");
-            
-            let is_morning = morning_enabled && current_minute == morning_time;
-            let is_afternoon = afternoon_enabled && current_minute == afternoon_time;
-            let is_evening = evening_enabled && current_minute == evening_time;
-            
+
+            let is_morning = morning_enabled && time_in_window(&today, morning_time, window_start, now);
+            let is_afternoon = afternoon_enabled && time_in_window(&today, afternoon_time, window_start, now);
+            let is_evening = evening_enabled && time_in_window(&today, evening_time, window_start, now);
+
             if is_morning || is_afternoon || is_evening {
                 if let Value::Array(ref arr) = read_json(&dir, "events", Value::Array(vec![])) {
                     let today_events: Vec<&Value> = arr.iter()
                         .filter(|e| e.get("date").and_then(|d| d.as_str()) == Some(today.as_str()))
                         .collect();
-
-                    // Also get tomorrow's events for evening notification
                     let tomorrow_events: Vec<&Value> = arr.iter()
                         .filter(|e| e.get("date").and_then(|d| d.as_str()) == Some(tomorrow.as_str()))
                         .collect();
-                    
-                    if is_morning && !today_events.is_empty() {
-                        let pending = today_events.iter()
-                            .filter(|e| !e.get("completed").and_then(|c| c.as_bool()).unwrap_or(false))
-                            .count();
-                        let _ = app.notification()
-                            .builder()
-                            .title("StudyPlan — Riepilogo mattutino")
-                            .body(&format!("{} impegni in programma per oggi.", pending))
-                            .show();
-                    }
 
-                    if is_afternoon && !today_events.is_empty() {
-                        let completed = today_events.iter()
-                            .filter(|e| e.get("completed").and_then(|c| c.as_bool()).unwrap_or(false))
-                            .count();
-                        let remaining = today_events.len() - completed;
-                        if remaining > 0 {
-                            let _ = app.notification()
-                                .builder()
-                                .title("StudyPlan — Riepilogo pomeridiano")
-                                .body(&format!("{} impegni ancora da completare oggi.", remaining))
-                                .show();
+                    if is_morning {
+                        let key = format!("summary-morning-{}", today);
+                        if !sent.contains(&key) {
+                            let pending = today_events.iter()
+                                .filter(|e| !e.get("completed").and_then(|c| c.as_bool()).unwrap_or(false))
+                                .count();
+                            if pending > 0 {
+                                let _ = app.notification()
+                                    .builder()
+                                    .title("StudyPlan — Riepilogo mattutino")
+                                    .body(&format!("{} impegni in programma per oggi.", pending))
+                                    .show();
+                            }
+                            sent.push(key);
+                            new_sent = true;
                         }
                     }
-                    
-                    if is_evening {
-                        if !today_events.is_empty() {
+
+                    if is_afternoon {
+                        let key = format!("summary-afternoon-{}", today);
+                        if !sent.contains(&key) {
                             let completed = today_events.iter()
                                 .filter(|e| e.get("completed").and_then(|c| c.as_bool()).unwrap_or(false))
                                 .count();
-                            let _ = app.notification()
-                                .builder()
-                                .title("StudyPlan — Riepilogo serale")
-                                .body(&format!("Completati {}/{} impegni di oggi.", completed, today_events.len()))
-                                .show();
+                            let remaining = today_events.len().saturating_sub(completed);
+                            if remaining > 0 {
+                                let _ = app.notification()
+                                    .builder()
+                                    .title("StudyPlan — Riepilogo pomeridiano")
+                                    .body(&format!("{} impegni ancora da completare oggi.", remaining))
+                                    .show();
+                            }
+                            sent.push(key);
+                            new_sent = true;
                         }
-                        // Preview tomorrow
-                        if !tomorrow_events.is_empty() {
-                            let _ = app.notification()
-                                .builder()
-                                .title("StudyPlan — Domani")
-                                .body(&format!("{} impegni in programma per domani.", tomorrow_events.len()))
-                                .show();
+                    }
+
+                    if is_evening {
+                        let key = format!("summary-evening-{}", today);
+                        if !sent.contains(&key) {
+                            if !today_events.is_empty() {
+                                let completed = today_events.iter()
+                                    .filter(|e| e.get("completed").and_then(|c| c.as_bool()).unwrap_or(false))
+                                    .count();
+                                let _ = app.notification()
+                                    .builder()
+                                    .title("StudyPlan — Riepilogo serale")
+                                    .body(&format!("Completati {}/{} impegni di oggi.", completed, today_events.len()))
+                                    .show();
+                            }
+                            if !tomorrow_events.is_empty() {
+                                let _ = app.notification()
+                                    .builder()
+                                    .title("StudyPlan — Domani")
+                                    .body(&format!("{} impegni in programma per domani.", tomorrow_events.len()))
+                                    .show();
+                            }
+                            sent.push(key);
+                            new_sent = true;
                         }
                     }
                 }
+            }
+
+            // Persist sent log (keep last 500)
+            if new_sent {
+                if sent.len() > 500 { sent.drain(..sent.len() - 500); }
+                let _ = std::fs::write(&sent_path, serde_json::to_string(&sent).unwrap_or_default());
+            }
+            // Daily cleanup at midnight: keep only today + tomorrow entries
+            let current_minute = now.format("%H:%M").to_string();
+            if current_minute == "00:00" {
+                sent.retain(|s| s.contains(&today) || s.contains(&tomorrow));
+                let _ = std::fs::write(&sent_path, serde_json::to_string(&sent).unwrap_or_default());
             }
         }
     });
@@ -672,9 +754,30 @@ pub fn run() {
             }
 
             // First-launch notification registration with macOS
+            // Request native permission — on macOS this triggers the system dialog
             {
+                use tauri_plugin_notification::PermissionState;
                 let data_dir = data_dir_arc.lock().unwrap().clone();
                 let marker = data_dir.join(".notifications_registered");
+
+                // Always ensure permission is requested at native level
+                let state = app.notification().permission_state();
+                eprintln!("[StudyPlan] Notification permission state: {:?}", state);
+                match state {
+                    Ok(PermissionState::Granted) => {
+                        eprintln!("[StudyPlan] Notifications already granted ✓");
+                    }
+                    Ok(PermissionState::Denied) => {
+                        eprintln!("[StudyPlan] Notifications denied — requesting again...");
+                        let _ = app.notification().request_permission();
+                    }
+                    _ => {
+                        eprintln!("[StudyPlan] Notifications unknown — requesting permission...");
+                        let result = app.notification().request_permission();
+                        eprintln!("[StudyPlan] Permission request result: {:?}", result);
+                    }
+                }
+
                 if !marker.exists() {
                     let _ = app.notification()
                         .builder()
@@ -686,10 +789,10 @@ pub fn run() {
             }
             
             // Privacy blur: emit events on window focus/blur
-            // Note: window starts hidden (visible:false in tauri.conf.json)
-            // Frontend calls show_main_window when DOM is ready to avoid flash
+            // Intercept close button → hide to tray instead of terminating
             if let Some(window) = app.get_webview_window("main") {
                 let w = window.clone();
+                let w_close = window.clone();
                 window.on_window_event(move |event| {
                     match event {
                         tauri::WindowEvent::Focused(false) => {
@@ -697,6 +800,11 @@ pub fn run() {
                         }
                         tauri::WindowEvent::Focused(true) => {
                             let _ = w.emit("app-blur", false);
+                        }
+                        tauri::WindowEvent::CloseRequested { api, .. } => {
+                            // Hide instead of close — keeps scheduler alive
+                            api.prevent_close();
+                            let _ = w_close.hide();
                         }
                         _ => {}
                     }
@@ -800,6 +908,20 @@ pub fn run() {
             show_main_window,
             toggle_widget,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // macOS: click sull'icona nel Dock quando la finestra è nascosta → riaprila
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = event {
+                if let Some(w) = app.get_webview_window("main") {
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                }
+            }
+            // Prevent default exit on last window close (keep tray alive)
+            if let tauri::RunEvent::ExitRequested { api, .. } = &event {
+                api.prevent_exit();
+            }
+        });
 }
