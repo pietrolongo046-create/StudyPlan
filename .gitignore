@@ -14,8 +14,12 @@ releases/*.dmg
 .DS_Store
 Thumbs.db
 
-# Env & logs
+# Env & secrets
 .env
+.env.keys
+.env.android
+*.keystore
+*.jks
 *.log
 
 # IDE

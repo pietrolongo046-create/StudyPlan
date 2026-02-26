@@ -1,6 +1,6 @@
 [package]
 name = "studyplan"
-version = "1.6.10"
+version = "2.0.0"
 description = "StudyPlan - Calendario e pianificatore esami per studenti"
 authors = ["StudyPlan Team"]
 license = ""
@@ -35,6 +35,16 @@ rand = "0.8"
 whoami = "1"
 open = "5"
 image = { version = "0.25", default-features = false, features = ["png"] }
+tokio = { version = "1", features = ["time"] }
+
+# macOS-only: App Nap prevention via NSProcessInfo FFI
+[target.'cfg(target_os = "macos")'.dependencies]
+objc = "0.2.7"
+cocoa = "0.24.1"
+
+[dependencies.time]
+version = "0.3"
+features = ["local-offset"]
 
 [profile.release]
 panic = "abort"

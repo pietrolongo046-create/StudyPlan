@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "StudyPlan",
-  "version": "1.9.2",
+  "version": "2.0.0",
   "identifier": "com.pietrolongo.studyplan",
   "build": {
     "frontendDist": "../web-dist",
@@ -27,7 +27,8 @@
         "fullscreen": false,
         "transparent": false,
         "visible": false,
-        "backgroundColor": "#0c0d14"
+        "backgroundColor": "#0c0d14",
+        "backgroundThrottling": "disabled"
       },
       {
         "label": "widget",
@@ -65,7 +66,8 @@
     ],
     "category": "Education",
     "macOS": {
-      "minimumSystemVersion": "10.15"
+      "minimumSystemVersion": "10.15",
+      "infoPlist": "Info.plist"
     },
     "windows": {
       "nsis": {

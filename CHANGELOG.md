@@ -2,6 +2,27 @@
 
 Tutte le modifiche rilevanti a StudyPlan sono documentate in questo file.
 
+## [2.0.0] — 2026-02-26
+
+### ⚠️ Breaking Changes
+- **Rotazione chiavi Ed25519** — Nuova coppia di chiavi per firma licenze
+
+### Aggiunto
+- **Architettura ibrida notifiche** — Desktop usa Tokio cron job (60s interval); Mobile mantiene `Schedule::At` nativo AOT
+- **Prevenzione App Nap macOS** — FFI `NSProcessInfo.beginActivityWithOptions` impedisce sospensione cron job
+- **Capability `notification:default`** — Permessi notifiche allineati
+- **Bundle ID** — Aggiornato a `com.pietrolongo.studyplan`
+
+### Fix
+- **Notifiche Desktop ignorate** — Risolto bug `notify-rust` che ignora `Schedule::At` su Desktop
+- **Dead code warnings** — Import condizionali con `#[cfg]`
+
+### Dipendenze
+- Aggiunto `tokio` feature `time`
+- Aggiunto `objc 0.2.7` + `cocoa 0.24.1` (macOS only)
+
+---
+
 ## [1.6.8] — 2025-02-15
 
 ### Cambiato
