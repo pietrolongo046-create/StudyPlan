@@ -291,7 +291,8 @@ fn open_pdf(state: State<AppState>, file_name: String) -> bool {
     }
     
     if path.exists() {
-        let _ = open::that(&path);
+        #[cfg(desktop)]
+        { let _ = open::that(&path); }
         true
     } else {
         false
@@ -811,10 +812,11 @@ async fn desktop_cron_job(app: AppHandle) {
     }
 }
 
-// ===== Window Commands =====
+// ===== Window Commands (no-op on mobile) =====
 
 #[tauri::command]
 fn window_minimize(app: AppHandle) {
+    #[cfg(desktop)]
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.minimize();
     }
@@ -822,6 +824,7 @@ fn window_minimize(app: AppHandle) {
 
 #[tauri::command]
 fn window_maximize(app: AppHandle) {
+    #[cfg(desktop)]
     if let Some(window) = app.get_webview_window("main") {
         if window.is_maximized().unwrap_or(false) {
             let _ = window.unmaximize();
@@ -833,6 +836,7 @@ fn window_maximize(app: AppHandle) {
 
 #[tauri::command]
 fn window_close(app: AppHandle) {
+    #[cfg(desktop)]
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.hide();
     }
@@ -840,6 +844,7 @@ fn window_close(app: AppHandle) {
 
 #[tauri::command]
 fn show_main_window(app: AppHandle, opts: Option<Value>) {
+    #[cfg(desktop)]
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
         let _ = window.set_focus();
@@ -856,6 +861,7 @@ fn show_main_window(app: AppHandle, opts: Option<Value>) {
 
 #[tauri::command]
 fn toggle_widget(app: AppHandle) {
+    #[cfg(desktop)]
     if let Some(w) = app.get_webview_window("widget") {
         if w.is_visible().unwrap_or(false) {
             let _ = w.hide();
@@ -940,6 +946,7 @@ pub fn run() {
             
             // Privacy blur: emit events on window focus/blur
             // Intercept close button → hide to tray instead of terminating
+            #[cfg(desktop)]
             if let Some(window) = app.get_webview_window("main") {
                 let w = window.clone();
                 let w_close = window.clone();
@@ -961,7 +968,8 @@ pub fn run() {
                 });
             }
 
-            // Tray menu
+            // Tray menu (Desktop only)
+            #[cfg(desktop)]
             {
                 use tauri::menu::{MenuBuilder, MenuItemBuilder};
                 use tauri::tray::TrayIconBuilder;
@@ -1035,7 +1043,8 @@ pub fn run() {
                 });
             }
 
-            // Show main window after setup
+            // Show main window after setup (Desktop only)
+            #[cfg(desktop)]
             if let Some(w) = app.get_webview_window("main") {
                 let _ = w.show();
                 let _ = w.set_focus();
